@@ -2,6 +2,42 @@
 
 工作流核心，这里只提供流程定义实现类；另外就是行为和执行器的上层接口，接口的实现由具体的工作流服务提供。
 
+#### 不依赖数据库的运行示例
+
+示例入口：`src/test/java/example/InMemoryWorkflowExample.java`，可在 IDE 中直接运行 `main`。
+示例放在测试源码目录，不会打入生产 JAR；无需数据库、表结构或应用服务。
+
+在项目根目录执行（JDK 8 或兼容版本，已验证 JDK 11）：
+
+```shell
+mvn test-compile org.codehaus.mojo:exec-maven-plugin:3.1.0:java "-Dexec.mainClass=example.InMemoryWorkflowExample" "-Dexec.classpathScope=test"
+```
+
+首次运行需要下载 Maven 依赖及运行插件。以下是示例输出，引擎还会输出调试日志：
+
+```text
+[1/4] 启动流程，requestId=DEMO-001
+[2/4] 等待信号，active=[wait], ended=false
+[3/4] 接收信号，name=continue, data=approved
+[4/4] 流程结束，active=[], ended=true, result=approved
+```
+
+流程结构为 `start -> wait --continue--> end`：
+
+1. 创建流程定义和内存实例，设置业务变量后调用 `start()`。
+2. 等待节点的 `execute()` 不推进流程，`start()` 返回；此时实例仍未结束，也没有线程休眠或轮询。
+3. 程序保留实例引用，模拟后续回调调用 `findExecution("wait").signal("continue", "approved")`。
+4. 信号处理器保存结果并走到结束节点；结束后活动节点为空，`isEnded()` 为 `true`。
+
+这里的信号是直接 Java 方法调用，不是网络消息。示例只接受 `continue`，错误信号会抛异常并保持等待。
+所有状态和变量仅存于当前进程；进程退出后不能自动恢复，结束后的实例也不要重复发送信号。
+
+只验证此示例：
+
+```shell
+mvn "-Dtest=InMemoryWorkflowExampleTest" test
+```
+
 #### 打包发布
 ```
 mvn clean source:jar package deploy -e
