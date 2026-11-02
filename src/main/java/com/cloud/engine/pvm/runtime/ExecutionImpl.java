@@ -599,20 +599,31 @@ public class ExecutionImpl implements
     }
   }
 
+  /**
+   * Dispatches operations synchronously. Failures propagate to the caller and
+   * discard pending operations, allowing an explicit retry. Already applied
+   * execution and business state is not rolled back; callers must retry from
+   * a consistent state using the appropriate operation.
+   */
   @Override
   public void performOperation(AtomicOperation executionOperation) {
     this.nextOperation = executionOperation;
     if (!isOperating) {
       isOperating = true;
-      while (nextOperation!=null) {
-        AtomicOperation currentOperation = this.nextOperation;
-        this.nextOperation = null;
-        if (log.isTraceEnabled()) {
-          log.trace("AtomicOperation: {} on {}", currentOperation, this);
+      try {
+        while (nextOperation!=null) {
+          AtomicOperation currentOperation = this.nextOperation;
+          this.nextOperation = null;
+          if (log.isTraceEnabled()) {
+            log.trace("AtomicOperation: {} on {}", currentOperation, this);
+          }
+          currentOperation.execute(this);
         }
-        currentOperation.execute(this);
+      } finally {
+        // Only the outer dispatcher owns cleanup, including exceptional exits.
+        this.nextOperation = null;
+        isOperating = false;
       }
-      isOperating = false;
     }
   }
 
