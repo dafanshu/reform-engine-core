@@ -162,9 +162,9 @@ public class ExecutionImpl implements
     subProcessInstance.setSuperExecution(this);
     this.setSubProcessInstance(subProcessInstance);
 
-    // Initialize the new execution
-    subProcessInstance.setProcessDefinition((ProcessDefinitionImpl) processDefinition);
-    subProcessInstance.setProcessInstance(subProcessInstance);
+    // Use the same initial scope tree as a standalone process instance.
+    ProcessDefinitionImpl definition = (ProcessDefinitionImpl) processDefinition;
+    definition.initializeProcessInstance(subProcessInstance, definition.getInitial());
 
     return subProcessInstance;
   }

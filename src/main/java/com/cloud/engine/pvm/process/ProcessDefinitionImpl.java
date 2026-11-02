@@ -41,6 +41,16 @@ public class ProcessDefinitionImpl extends ScopeImpl implements PvmProcessDefini
       throw new ActivitiException("Cannot start process instance, initial activity where the process instance should start is null.");
     }
     InterpretableExecution processInstance = newProcessInstance(initial);
+    initializeProcessInstance(processInstance, initial);
+    return processInstance;
+  }
+
+  /** Initializes a newly created process instance, including its initial scope tree.
+   * The caller owns instance creation so execution subclass factories are preserved. */
+  public void initializeProcessInstance(InterpretableExecution processInstance, ActivityImpl initial) {
+    if (initial == null) {
+      throw new ActivitiException("Cannot initialize process instance, initial activity is null.");
+    }
     processInstance.setProcessDefinition(this);
     processInstance.setProcessInstance(processInstance);
     processInstance.initialize();
@@ -59,7 +69,6 @@ public class ProcessDefinitionImpl extends ScopeImpl implements PvmProcessDefini
       }
     }
     scopeInstance.setActivity(initial);
-    return processInstance;
   }
 
   public List<ActivityImpl> getInitialActivityStack() {
