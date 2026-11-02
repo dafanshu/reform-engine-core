@@ -28,8 +28,11 @@ public class AtomicOperationProcessStart extends AbstractEventAtomicOperation {
     StartingExecution startingExecution = execution.getStartingExecution();
     List<ActivityImpl> initialActivityStack = processDefinition.getInitialActivityStack(startingExecution.getInitial());
     ActivityImpl activity = initialActivityStack.get(0);
-    execution.setActivity(activity);
-    execution.performOperation(PROCESS_START_INITIAL);
+    // Scoped activities run on the child already created during instance initialization.
+    InterpretableExecution executionToUse = activity.isScope()
+        ? (InterpretableExecution) execution.getExecutions().get(0) : execution;
+    executionToUse.setActivity(activity);
+    executionToUse.performOperation(PROCESS_START_INITIAL);
     log.debug("{} perform {}: {}", execution, this, activity);
   }
 
