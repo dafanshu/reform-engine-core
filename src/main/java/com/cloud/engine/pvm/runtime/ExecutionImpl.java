@@ -164,6 +164,7 @@ public class ExecutionImpl implements
 
     // Use the same initial scope tree as a standalone process instance.
     ProcessDefinitionImpl definition = (ProcessDefinitionImpl) processDefinition;
+    subProcessInstance.startingExecution = new StartingExecution(definition.getInitial());
     definition.initializeProcessInstance(subProcessInstance, definition.getInitial());
 
     return subProcessInstance;
@@ -436,8 +437,15 @@ public class ExecutionImpl implements
 
   @Override
   public void start() {
-    if(startingExecution == null && isProcessInstanceType()) {
-      startingExecution = new StartingExecution(getProcessDefinition().getInitial());
+    if (isProcessInstanceType()) {
+      if (startingExecution == null) {
+        startingExecution = new StartingExecution(getProcessDefinition().getInitial());
+      }
+      // Factories prepare the tree eagerly; direct and lazy instances prepare it here.
+      // Keep the marker across process-start listener failures so retries reuse the tree.
+      if (!startingExecution.isInitialized()) {
+        getProcessDefinition().initializeProcessInstance(this, startingExecution.getInitial());
+      }
     }
     performOperation(AtomicOperation.PROCESS_START);
   }

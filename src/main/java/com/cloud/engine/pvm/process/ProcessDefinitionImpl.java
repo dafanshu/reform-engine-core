@@ -69,6 +69,7 @@ public class ProcessDefinitionImpl extends ScopeImpl implements PvmProcessDefini
       }
     }
     scopeInstance.setActivity(initial);
+    processInstance.getStartingExecution().setInitialized(true);
   }
 
   public List<ActivityImpl> getInitialActivityStack() {
