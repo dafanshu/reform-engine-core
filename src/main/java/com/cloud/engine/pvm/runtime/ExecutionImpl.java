@@ -437,7 +437,7 @@ public class ExecutionImpl implements
   @Override
   public void start() {
     if(startingExecution == null && isProcessInstanceType()) {
-      startingExecution = new StartingExecution(processDefinition.getInitial());
+      startingExecution = new StartingExecution(getProcessDefinition().getInitial());
     }
     performOperation(AtomicOperation.PROCESS_START);
   }
@@ -629,7 +629,15 @@ public class ExecutionImpl implements
 
 
   public boolean isActive(String activityId) {
-    return findExecution(activityId)!=null;
+    if (getActivity()!=null && getActivity().getId().equals(activityId) && isActive()) {
+      return true;
+    }
+    for (ExecutionImpl nestedExecution : getExecutions()) {
+      if (nestedExecution.isActive(activityId)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // variables ////////////////////////////////////////////////////////////////

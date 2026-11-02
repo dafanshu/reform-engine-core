@@ -23,7 +23,7 @@ public class ProcessDefinitionBuilder {
 
   protected ProcessDefinitionImpl processDefinition;
   protected Stack<ScopeImpl> scopeStack = new Stack<ScopeImpl>();
-  protected ProcessElementImpl processElement = processDefinition;
+  protected ProcessElementImpl processElement;
   protected TransitionImpl transition;
   protected List<Object[]> unresolvedTransitions = new ArrayList<Object[]>();
 
@@ -33,6 +33,7 @@ public class ProcessDefinitionBuilder {
 
   public ProcessDefinitionBuilder(String processDefinitionId) {
     processDefinition = new ProcessDefinitionImpl(processDefinitionId);
+    processElement = processDefinition;
     scopeStack.push(processDefinition);
   }
 
