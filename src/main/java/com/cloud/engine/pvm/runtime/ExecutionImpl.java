@@ -202,12 +202,13 @@ public class ExecutionImpl implements
 
    log.debug("performing destroy scope behavior for execution {}", this);
 
-    // remove all child executions and sub process instances:
+    // The current execution can own a subprocess even without child executions.
+    if (getSubProcessInstance() != null) {
+      getSubProcessInstance().deleteCascade(reason);
+    }
+    // Each child's cascade owns cancellation of its subprocess and descendants.
     List<InterpretableExecution> executions = new ArrayList<InterpretableExecution>(getExecutions());
     for (InterpretableExecution childExecution : executions) {
-      if (childExecution.getSubProcessInstance()!=null) {
-        childExecution.getSubProcessInstance().deleteCascade(reason);
-      }
       childExecution.deleteCascade(reason);
     }
 
