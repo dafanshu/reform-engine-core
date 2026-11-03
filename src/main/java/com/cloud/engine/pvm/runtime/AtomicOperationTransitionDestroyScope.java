@@ -60,6 +60,7 @@ public class AtomicOperationTransitionDestroyScope implements AtomicOperation {
             concurrentRoot.setActivity((ActivityImpl) lastConcurrent.getActivity());
             concurrentRoot.setActive(lastConcurrent.isActive());
             lastConcurrent.setReplacedBy(concurrentRoot);
+            concurrentRoot.setVariablesLocal(lastConcurrent.getVariablesLocal());
             lastConcurrent.remove();
           }
         }

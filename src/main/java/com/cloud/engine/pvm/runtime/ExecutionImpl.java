@@ -993,7 +993,8 @@ public class ExecutionImpl implements
 
   @Override
   public Map<String, Object> getVariablesLocal() {
-    return null;
+    ensureVariablesInitialized();
+    return new HashMap<String, Object>(variables);
   }
 
 
@@ -1056,6 +1057,13 @@ public class ExecutionImpl implements
 
   @Override
   public void setVariablesLocal(Map<String, ? extends Object> variables) {
+    ensureVariablesInitialized();
+    if (variables != null) {
+      // Merge only local bindings: the surviving branch keeps its shadowing values.
+      for (Map.Entry<String, ? extends Object> entry : variables.entrySet()) {
+        setVariableLocally(entry.getKey(), entry.getValue());
+      }
+    }
   }
 
   @Override
