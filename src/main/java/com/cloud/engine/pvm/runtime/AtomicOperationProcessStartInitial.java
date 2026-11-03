@@ -26,9 +26,12 @@ public class AtomicOperationProcessStartInitial extends AbstractEventAtomicOpera
   protected void eventNotificationsCompleted(InterpretableExecution execution) {
     ActivityImpl activity = (ActivityImpl) execution.getActivity();
     ProcessDefinitionImpl processDefinition = execution.getProcessDefinition();
-    StartingExecution startingExecution = execution.getStartingExecution();
+    // The selected initial activity belongs to the process instance, not each scope child.
+    InterpretableExecution processInstance = execution.isProcessInstanceType()
+        ? execution : (InterpretableExecution) execution.getProcessInstance();
+    StartingExecution startingExecution = processInstance.getStartingExecution();
     if (activity==startingExecution.getInitial()) {
-      execution.disposeStartingExecution();
+      processInstance.disposeStartingExecution();
       execution.performOperation(ACTIVITY_EXECUTE);
     } else {
       List<ActivityImpl> initialActivityStack = processDefinition.getInitialActivityStack(startingExecution.getInitial());
@@ -38,6 +41,7 @@ public class AtomicOperationProcessStartInitial extends AbstractEventAtomicOpera
       InterpretableExecution executionToUse = null;
       if (activity.isScope()) {
         executionToUse = (InterpretableExecution) execution.getExecutions().get(0);
+        execution.setActivity(null);
       } else {
         executionToUse = execution;
       }

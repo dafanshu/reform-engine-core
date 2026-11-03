@@ -5,6 +5,7 @@ import com.cloud.engine.pvm.process.ActivityImpl;
 public class StartingExecution {
 
   protected final ActivityImpl selectedInitial;
+  protected boolean initialized;
 
   public StartingExecution(ActivityImpl selectedInitial) {
     this.selectedInitial = selectedInitial;
@@ -12,6 +13,14 @@ public class StartingExecution {
 
   public ActivityImpl getInitial() {
     return selectedInitial;
+  }
+
+  public boolean isInitialized() {
+    return initialized;
+  }
+
+  public void setInitialized(boolean initialized) {
+    this.initialized = initialized;
   }
 
 }
