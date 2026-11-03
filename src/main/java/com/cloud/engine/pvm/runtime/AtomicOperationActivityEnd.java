@@ -58,7 +58,13 @@ public class AtomicOperationActivityEnd extends AbstractEventAtomicOperation {
         execution.destroy();
         execution.remove();
         // If we are a scope under the process instance, complete the process here.
-        if(activity.getParent() == activity.getProcessDefinition()) {
+        if (parentScopeExecution.isConcurrent() && !parentScopeExecution.isScope()) {
+          // Complete the branch carrier, not its enclosing scope or process.
+          // The activity end event already ran on the scoped child.
+          parentScopeExecution.setActive(false);
+          parentScopeExecution.setEnded(true);
+          removeConcurrentExecution(parentScopeExecution);
+        } else if(activity.getParent() == activity.getProcessDefinition()) {
           parentScopeExecution.setActivity(activity);
           // The activity end event already ran on the scope execution.
           parentScopeExecution.performOperation(PROCESS_END);
@@ -68,35 +74,39 @@ public class AtomicOperationActivityEnd extends AbstractEventAtomicOperation {
         }
       }
     } else {
-      // execution.isConcurrent() && !execution.isScope()
-      execution.remove();
-      // prune if necessary
-      InterpretableExecution concurrentRoot = (InterpretableExecution) execution.getParent();
-      if (concurrentRoot.getExecutions().size()==1) {
-        InterpretableExecution lastConcurrent = (InterpretableExecution) concurrentRoot.getExecutions().get(0);
-        if (!lastConcurrent.isScope()) {
-          concurrentRoot.setActivity((ActivityImpl) lastConcurrent.getActivity());
-          lastConcurrent.setReplacedBy(concurrentRoot);
-          // Move children of lastConcurrent one level up
-          if (!lastConcurrent.getExecutions().isEmpty()) {
-            concurrentRoot.getExecutions().clear();
-            for (ActivityExecution childExecution : lastConcurrent.getExecutions()) {
-              InterpretableExecution childInterpretableExecution = (InterpretableExecution) childExecution;
-              ((List)concurrentRoot.getExecutions()).add(childExecution); // casting ... damn generics
-              childInterpretableExecution.setParent(concurrentRoot);
-            }
-            lastConcurrent.getExecutions().clear();
+      removeConcurrentExecution(execution);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  protected void removeConcurrentExecution(InterpretableExecution execution) {
+    execution.remove();
+    // prune if necessary
+    InterpretableExecution concurrentRoot = (InterpretableExecution) execution.getParent();
+    if (concurrentRoot.getExecutions().size()==1) {
+      InterpretableExecution lastConcurrent = (InterpretableExecution) concurrentRoot.getExecutions().get(0);
+      if (!lastConcurrent.isScope()) {
+        concurrentRoot.setActivity((ActivityImpl) lastConcurrent.getActivity());
+        lastConcurrent.setReplacedBy(concurrentRoot);
+        // Move children of lastConcurrent one level up
+        if (!lastConcurrent.getExecutions().isEmpty()) {
+          concurrentRoot.getExecutions().clear();
+          for (ActivityExecution childExecution : lastConcurrent.getExecutions()) {
+            InterpretableExecution childInterpretableExecution = (InterpretableExecution) childExecution;
+            ((List)concurrentRoot.getExecutions()).add(childExecution); // casting ... damn generics
+            childInterpretableExecution.setParent(concurrentRoot);
           }
-          // Copy execution-local variables of lastConcurrent
-          concurrentRoot.setVariablesLocal(lastConcurrent.getVariablesLocal());
-          // Make sure parent execution is re-activated when the last concurrent child execution is active
-          if (!concurrentRoot.isActive() && lastConcurrent.isActive()) {
-            concurrentRoot.setActive(true);
-          }
-          lastConcurrent.remove();
-        } else {
-          lastConcurrent.setConcurrent(false);
+          lastConcurrent.getExecutions().clear();
         }
+        // Copy execution-local variables of lastConcurrent
+        concurrentRoot.setVariablesLocal(lastConcurrent.getVariablesLocal());
+        // Make sure parent execution is re-activated when the last concurrent child execution is active
+        if (!concurrentRoot.isActive() && lastConcurrent.isActive()) {
+          concurrentRoot.setActive(true);
+        }
+        lastConcurrent.remove();
+      } else {
+        lastConcurrent.setConcurrent(false);
       }
     }
   }
