@@ -224,21 +224,14 @@ public class ExecutionImpl implements
 
   @Override
   public String getSuperExecutionId() {
-    ensureActivityInitialized();
-    if (superExecution != null) {
-      return superExecution.getId();
-    }
-
-    return null;
+    ExecutionImpl caller = getSuperExecution();
+    return caller != null ? caller.getId() : null;
   }
 
   @Override
   public String getParentId() {
-    ensureActivityInitialized();
-    if(parent != null) {
-      return parent.getId();
-    }
-    return null;
+    ExecutionImpl parentExecution = getParent();
+    return parentExecution != null ? parentExecution.getId() : null;
   }
 
   /** all updates need to go through this setter as subclasses can override this method */
@@ -877,6 +870,13 @@ public class ExecutionImpl implements
   @Override
   public void setReplacedBy(InterpretableExecution replacedBy) {
     this.replacedBy = (ExecutionImpl) replacedBy;
+    ExecutionImpl childProcess = getSubProcessInstance();
+    if (this.replacedBy != null && childProcess != null) {
+      // Both concurrency-pruning paths must redirect completion to the surviving execution.
+      childProcess.setSuperExecution(this.replacedBy);
+      this.replacedBy.setSubProcessInstance(childProcess);
+      setSubProcessInstance(null);
+    }
   }
   public void setExecutions(List<ExecutionImpl> executions) {
     this.executions = executions;

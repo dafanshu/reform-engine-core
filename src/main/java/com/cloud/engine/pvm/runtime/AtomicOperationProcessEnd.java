@@ -12,6 +12,14 @@ public class AtomicOperationProcessEnd extends AbstractEventAtomicOperation {
   private static Logger log = LoggerFactory.getLogger(AtomicOperationProcessEnd.class);
 
   @Override
+  public void execute(InterpretableExecution execution) {
+    // All completion paths, including scope unwinding, share the same terminal state.
+    execution.setActive(false);
+    execution.setEnded(true);
+    super.execute(execution);
+  }
+
+  @Override
   protected ScopeImpl getScope(InterpretableExecution execution) {
     return execution.getProcessDefinition();
   }
