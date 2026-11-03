@@ -54,6 +54,22 @@ public class AtomicOperationActivityEnd extends AbstractEventAtomicOperation {
         }
       } else {
         // default destroy scope behavior
+        if (execution.isConcurrent()) {
+          if (!activity.isScope() && parentActivity != null) {
+            // A pruned ordinary activity shares its enclosing scope execution.
+            // Notify that scope before removing this concurrent path.
+            execution.setActivity(parentActivity);
+            execution.performOperation(ACTIVITY_END);
+            return;
+          }
+          // A scope left behind by a crossing branch is itself a concurrent path.
+          // Finishing it must preserve the other paths in its parent scope.
+          execution.destroy();
+          execution.setActive(false);
+          execution.setEnded(true);
+          removeConcurrentExecution(execution);
+          return;
+        }
         InterpretableExecution parentScopeExecution = (InterpretableExecution) execution.getParent();
         execution.destroy();
         execution.remove();
