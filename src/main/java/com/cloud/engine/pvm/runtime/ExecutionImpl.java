@@ -877,6 +877,13 @@ public class ExecutionImpl implements
   @Override
   public void setReplacedBy(InterpretableExecution replacedBy) {
     this.replacedBy = (ExecutionImpl) replacedBy;
+    ExecutionImpl childProcess = getSubProcessInstance();
+    if (this.replacedBy != null && childProcess != null) {
+      // Both concurrency-pruning paths must redirect completion to the surviving execution.
+      childProcess.setSuperExecution(this.replacedBy);
+      this.replacedBy.setSubProcessInstance(childProcess);
+      setSubProcessInstance(null);
+    }
   }
   public void setExecutions(List<ExecutionImpl> executions) {
     this.executions = executions;
