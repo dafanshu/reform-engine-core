@@ -202,12 +202,13 @@ public class ExecutionImpl implements
 
    log.debug("performing destroy scope behavior for execution {}", this);
 
-    // remove all child executions and sub process instances:
+    // The current execution can own a subprocess even without child executions.
+    if (getSubProcessInstance() != null) {
+      getSubProcessInstance().deleteCascade(reason);
+    }
+    // Each child's cascade owns cancellation of its subprocess and descendants.
     List<InterpretableExecution> executions = new ArrayList<InterpretableExecution>(getExecutions());
     for (InterpretableExecution childExecution : executions) {
-      if (childExecution.getSubProcessInstance()!=null) {
-        childExecution.getSubProcessInstance().deleteCascade(reason);
-      }
       childExecution.deleteCascade(reason);
     }
 
@@ -548,7 +549,7 @@ public class ExecutionImpl implements
         // End the pruned executions if necessary.
         // Some recyclable executions are inactivated (joined executions)
         // Others are already ended (end activities)
-        if (!prunedExecution.isEnded()) {
+        if (prunedExecution != concurrentRoot && !prunedExecution.isEnded()) {
           log.debug("pruning execution {}", prunedExecution);
           prunedExecution.remove();
         }
@@ -557,7 +558,7 @@ public class ExecutionImpl implements
       log.debug("activating the concurrent root {} as the single path of execution going forward", concurrentRoot);
       concurrentRoot.setActive(true);
       concurrentRoot.setActivity(activity);
-      concurrentRoot.setConcurrent(false);
+      // Joining paths inside this root does not change its concurrency in its parent.
       concurrentRoot.take(transitions.get(0));
 
     } else {
