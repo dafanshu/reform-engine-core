@@ -21,6 +21,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -737,6 +738,7 @@ public class ExecutionImpl implements
   }
 
   public void setVariableLocally(String variableName, Object value) {
+    ensureVariablesInitialized();
     log.debug("setting variable '{}' to value '{}' on {}", variableName, value, this);
     variables.put(variableName, value);
   }
@@ -951,14 +953,30 @@ public class ExecutionImpl implements
 
   @Override
   public void createVariableLocal(String variableName, Object value) {
+    if (hasVariableLocal(variableName)) {
+      throw new PvmException("local variable '" + variableName + "' already exists");
+    }
+    setVariableLocally(variableName, value);
   }
 
   public void createVariablesLocal(Map<String, ? extends Object> variables) {
+    if (variables == null) {
+      return;
+    }
+    // Validate the entire batch before any write, including bindings whose value is null.
+    // As with other variable operations, the caller must serialize access to this execution.
+    for (String variableName : variables.keySet()) {
+      if (hasVariableLocal(variableName)) {
+        throw new PvmException("local variable '" + variableName + "' already exists");
+      }
+    }
+    setVariablesLocal(variables);
   }
 
   @Override
   public Object getVariableLocal(String variableName) {
-    return null;
+    ensureVariablesInitialized();
+    return variables.get(variableName);
   }
 
   @Override
@@ -988,12 +1006,13 @@ public class ExecutionImpl implements
 
   @Override
   public Set<String> getVariableNames() {
-    return null;
+    return new HashSet<String>(getVariables().keySet());
   }
 
   @Override
   public Set<String> getVariableNamesLocal() {
-    return null;
+    ensureVariablesInitialized();
+    return new HashSet<String>(variables.keySet());
   }
 
   @Override
@@ -1005,58 +1024,94 @@ public class ExecutionImpl implements
 
   @Override
   public Map<String, Object> getVariablesLocal(Collection<String> variableNames) {
-        return null;
+    ensureVariablesInitialized();
+    Map<String, Object> selectedVariables = new HashMap<String, Object>();
+    // Match getVariables(names): requested missing names are included with null.
+    for (String variableName : variableNames) {
+      selectedVariables.put(variableName, variables.get(variableName));
+    }
+    return selectedVariables;
   }
 
   @Override
   public Map<String, Object> getVariablesLocal(Collection<String> variableNames, boolean fetchAllVariables) {
-        return null;
+    return getVariablesLocal(variableNames);
   }
 
   @Override
   public boolean hasVariableLocal(String variableName) {
-    return false;
+    ensureVariablesInitialized();
+    return variables.containsKey(variableName);
   }
 
   @Override
   public boolean hasVariables() {
-    return false;
+    if (hasVariablesLocal()) {
+      return true;
+    }
+    ensureParentInitialized();
+    return parent != null && parent.hasVariables();
   }
 
   @Override
   public boolean hasVariablesLocal() {
-    return false;
+    ensureVariablesInitialized();
+    return !variables.isEmpty();
   }
 
   @Override
   public void removeVariable(String variableName) {
+    ensureVariablesInitialized();
+    if (variables.containsKey(variableName)) {
+      removeVariableLocal(variableName);
+    } else {
+      ensureParentInitialized();
+      if (parent != null) {
+        parent.removeVariable(variableName);
+      }
+    }
   }
 
   @Override
   public void removeVariableLocal(String variableName) {
+    ensureVariablesInitialized();
+    variables.remove(variableName);
   }
 
   @Override
   public void removeVariables(Collection<String> variableNames) {
+    for (String variableName : new ArrayList<String>(variableNames)) {
+      removeVariable(variableName);
+    }
   }
 
   @Override
   public void removeVariablesLocal(Collection<String> variableNames) {
+    for (String variableName : new ArrayList<String>(variableNames)) {
+      removeVariableLocal(variableName);
+    }
   }
 
   @Override
   public void removeVariables() {
+    // Remove each currently visible binding once; removing a shadow may reveal a parent binding.
+    removeVariables(getVariableNames());
   }
 
   @Override
   public void removeVariablesLocal() {
+    ensureVariablesInitialized();
+    variables.clear();
   }
 
   public void deleteVariablesLocal() {
+    removeVariablesLocal();
   }
 
   @Override
   public Object setVariableLocal(String variableName, Object value) {
+    setVariableLocally(variableName, value);
+    // Preserve the existing null return; read the stored value through getVariableLocal.
     return null;
   }
 
