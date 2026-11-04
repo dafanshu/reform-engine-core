@@ -953,9 +953,24 @@ public class ExecutionImpl implements
 
   @Override
   public void createVariableLocal(String variableName, Object value) {
+    if (hasVariableLocal(variableName)) {
+      throw new PvmException("local variable '" + variableName + "' already exists");
+    }
+    setVariableLocally(variableName, value);
   }
 
   public void createVariablesLocal(Map<String, ? extends Object> variables) {
+    if (variables == null) {
+      return;
+    }
+    // Validate the entire batch before any write, including bindings whose value is null.
+    // As with other variable operations, the caller must serialize access to this execution.
+    for (String variableName : variables.keySet()) {
+      if (hasVariableLocal(variableName)) {
+        throw new PvmException("local variable '" + variableName + "' already exists");
+      }
+    }
+    setVariablesLocal(variables);
   }
 
   @Override

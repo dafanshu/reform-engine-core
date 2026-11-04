@@ -175,6 +175,49 @@ public class VariableScopeContractTest extends TestCase {
         assertEquals("child-only", root.getVariable("result")); assertEquals("child-only", child.getVariable("result"));
     }
 
+    public void testCreateLocalAllowsParentShadowAndNullValue() {
+        ExecutionImpl root = new ExecutionImpl(); root.setVariable("key", "parent");
+        ExecutionImpl child = root.createExecution();
+        child.createVariableLocal("key", null);
+        assertTrue(child.hasVariableLocal("key")); assertNull(child.getVariable("key"));
+        assertEquals("parent", root.getVariable("key"));
+        child.createVariableLocal("fresh", 1);
+        assertEquals(1, child.getVariableLocal("fresh")); assertFalse(root.hasVariable("fresh"));
+    }
+
+    public void testCreateLocalRejectsExistingValue() { rejectCreate("original"); }
+    public void testCreateLocalRejectsExistingNull() { rejectCreate(null); }
+    private void rejectCreate(Object original) {
+        ExecutionImpl e = new ExecutionImpl(); e.setVariableLocal("key", original);
+        try {e.createVariableLocal("key", "replacement"); fail("duplicate local binding must be rejected");}
+        catch (PvmException expected) {assertTrue(expected.getMessage().contains("key"));}
+        assertTrue(e.hasVariableLocal("key")); assertEquals(original, e.getVariableLocal("key"));
+    }
+
+    public void testBulkCreatePrechecksAllKeysBeforeWriting() {
+        for (Object existing : Arrays.asList("original", null)) {
+            ExecutionImpl e = new ExecutionImpl(); e.setVariableLocal("duplicate", existing);
+            Map<String, Object> additions = new LinkedHashMap<String, Object>();
+            additions.put("first", 1); additions.put("duplicate", "replacement"); additions.put("last", 2);
+            try {e.createVariablesLocal(additions); fail("the whole batch must reject the duplicate");}
+            catch (PvmException expected) {assertTrue(expected.getMessage().contains("duplicate"));}
+            assertEquals(Collections.singletonMap("duplicate", existing), e.getVariablesLocal());
+            assertEquals(3, additions.size());
+        }
+    }
+
+    public void testBulkCreateShadowsParentWithoutChangingInput() {
+        ExecutionImpl root = new ExecutionImpl(); root.setVariable("key", "parent");
+        ExecutionImpl child = root.createExecution();
+        Map<String, Object> additions = new LinkedHashMap<String, Object>();
+        additions.put("key", "local"); additions.put("nullable", null);
+        child.createVariablesLocal(Collections.unmodifiableMap(additions));
+        assertEquals(additions, child.getVariablesLocal()); assertEquals("parent", root.getVariable("key"));
+        assertFalse(root.hasVariable("nullable"));
+        child.createVariablesLocal(Collections.<String,Object>emptyMap()); child.createVariablesLocal(null);
+        assertEquals(additions, child.getVariablesLocal());
+    }
+
     private PvmProcessDefinition definition() {
         return new ProcessDefinitionBuilder("wait").createActivity("wait").initial().behavior(new WaitState()).endActivity().buildProcessDefinition();
     }
