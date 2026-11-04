@@ -10,6 +10,18 @@ public class AtomicOperationDeleteCascadeFireActivityEnd extends AbstractEventAt
   private static Logger log = LoggerFactory.getLogger(AtomicOperationDeleteCascadeFireActivityEnd.class);
 
   @Override
+  public void execute(InterpretableExecution execution) {
+    // Scope cleanup may resolve its event source through inactive parents all
+    // the way to the process definition. Only the process root owns that event;
+    // a cancelled scope must still be removed without notifying process end.
+    if (!execution.isProcessInstanceType() && getScope(execution) == execution.getProcessDefinition()) {
+      eventNotificationsCompleted(execution);
+    } else {
+      super.execute(execution);
+    }
+  }
+
+  @Override
   protected ScopeImpl getScope(InterpretableExecution execution) {
     ActivityImpl activity = (ActivityImpl) execution.getActivity();
 
