@@ -527,20 +527,24 @@ public class ExecutionImpl implements
     }
 
     ExecutionImpl concurrentRoot = ((isConcurrent && !isScope) ? getParent() : this);
-    List<ExecutionImpl> concurrentActiveExecutions = new ArrayList<ExecutionImpl>();
+    List<ExecutionImpl> remainingConcurrentExecutions = new ArrayList<ExecutionImpl>();
     for (ExecutionImpl execution: concurrentRoot.getExecutions()) {
-      if (execution.isActive()) {
-        concurrentActiveExecutions.add(execution);
+      // Inactive does not mean ended: another path may carry a scope or wait
+      // at a different join. Only this path and the supplied recyclable paths
+      // can be consumed by this takeAll; preserve the existing active guard.
+      if (execution.isActive()
+          || (!execution.isEnded() && execution != this && !recyclableExecutions.contains(execution))) {
+        remainingConcurrentExecutions.add(execution);
       }
     }
 
     if (log.isDebugEnabled()) {
       log.debug("transitions to take concurrent: {}", transitions);
-      log.debug("active concurrent executions: {}", concurrentActiveExecutions);
+      log.debug("remaining concurrent executions: {}", remainingConcurrentExecutions);
     }
 
     if ( (transitions.size()==1)
-         && (concurrentActiveExecutions.isEmpty())
+         && (remainingConcurrentExecutions.isEmpty())
        ) {
 
       @SuppressWarnings("rawtypes")
