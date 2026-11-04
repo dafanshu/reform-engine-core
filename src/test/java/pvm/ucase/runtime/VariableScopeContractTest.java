@@ -104,6 +104,28 @@ public class VariableScopeContractTest extends TestCase {
         child.removeVariablesLocal(); assertEquals(1, child.getVariable("key"));
     }
 
+    public void testLazyVariableAndParentHooksRemainEffective() {
+        final ExecutionImpl root = new ExecutionImpl(); root.setVariable("inherited", 1);
+        ExecutionImpl child = new ExecutionImpl() {
+            @Override protected void ensureVariablesInitialized() {
+                if (variables == null) {
+                    variables = new HashMap<String, Object>();
+                    variables.put("loaded", 2);
+                }
+            }
+            @Override protected void ensureParentInitialized() {
+                if (parent == null) parent = root;
+            }
+        };
+        assertEquals(2, child.getVariableLocal("loaded"));
+        child.setVariableLocally("written", 3);
+        assertEquals(2, child.getVariableLocal("loaded"));
+        assertEquals(3, child.getVariableLocal("written"));
+        child.removeVariable("inherited");
+        assertFalse(root.hasVariable("inherited"));
+        child.removeVariablesLocal(); assertTrue(child.getVariablesLocal().isEmpty());
+    }
+
     public void testFailurePreservesWrittenVariables() {
         PvmProcessDefinition d = new ProcessDefinitionBuilder("failure")
                 .createActivity("work").initial().behavior(e -> {e.setVariable("written", 1); throw new IllegalStateException("failed");})
