@@ -58,6 +58,13 @@ public class AtomicOperationDeleteCascadeFireActivityEnd extends AbstractEventAt
 
       execution.remove();
 
+      // Commit the root's terminal state only after cancellation notifications
+      // and cleanup succeed. Internal scope cleanup leaves its caller resumable.
+      if (execution.isProcessInstanceType()) {
+        execution.setActive(false);
+        execution.setEnded(true);
+      }
+
       if (!execution.isDeleteRoot()) {
         InterpretableExecution parent = (InterpretableExecution) execution.getParent();
         if (parent!=null) {

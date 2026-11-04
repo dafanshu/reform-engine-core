@@ -62,7 +62,9 @@ public class TerminalExecutionContractTest extends TestCase {
 
     public void testCancelledCalledProcessIsTerminalWithoutNormalCallbacks() { subprocess(true); }
     public void testNaturallyEndedCalledProcessRejectsFurtherSignal() { subprocess(false); }
-    private void subprocess(boolean cancel) {
+    public void testWholeParentCancellationTerminatesCalledProcessToo() { subprocess(true, true); }
+    private void subprocess(boolean cancel) { subprocess(cancel, false); }
+    private void subprocess(boolean cancel, boolean cancelParent) {
         List<String> events = new ArrayList<String>(); List<ExecutionImpl> children = new ArrayList<ExecutionImpl>();
         PvmProcessDefinition childDefinition = new ProcessDefinitionBuilder("child")
                 .executionListener(PvmEvent.EVENTNAME_END, e -> events.add("child-end"))
@@ -82,13 +84,22 @@ public class TerminalExecutionContractTest extends TestCase {
                 .buildProcessDefinition().createProcessInstance();
         root.start(); ExecutionImpl child = children.get(0);
         if (cancel) {
-            root.destroyScope("cancel call");
-            assertFalse(root.isEnded()); assertEquals(Collections.singletonList("child-end"), events);
+            if (cancelParent) {
+                root.deleteCascade("cancel parent and child");
+                assertTrue(root.isEnded()); assertFalse(root.isActive());
+                assertEquals(Arrays.asList("child-end", "parent-end"), events);
+                rejectSignal(root);
+            } else {
+                root.destroyScope("cancel call");
+                assertFalse(root.isEnded()); assertEquals(Collections.singletonList("child-end"), events);
+            }
         } else child.findExecution("childWait").signal(null, null);
         assertTrue(child.isEnded()); assertFalse(child.isActive());
         List<String> before = new ArrayList<String>(events); rejectSignal(child); assertEquals(before, events);
         if (cancel) {
-            root.setActive(true); root.executeActivity(root.getProcessDefinition().findActivity("continued")); root.signal(null, null);
+            if (!cancelParent) {
+                root.setActive(true); root.executeActivity(root.getProcessDefinition().findActivity("continued")); root.signal(null, null);
+            }
             assertEquals(Arrays.asList("child-end", "parent-end"), events);
         } else assertEquals(Arrays.asList("child-end", "completing", "completed", "parent-end"), events);
         assertTrue(root.isEnded());

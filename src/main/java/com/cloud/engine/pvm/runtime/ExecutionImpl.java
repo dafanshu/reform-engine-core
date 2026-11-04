@@ -449,6 +449,9 @@ public class ExecutionImpl implements
 
   @Override
   public void signal(String signalName, Object signalData) {
+    if (isEnded()) {
+      throw new PvmException("cannot signal an ended execution");
+    }
     ensureActivityInitialized();
     SignallableActivityBehavior activityBehavior = (SignallableActivityBehavior) activity.getActivityBehavior();
     try {

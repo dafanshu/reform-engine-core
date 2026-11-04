@@ -30,7 +30,7 @@ mvn test-compile org.codehaus.mojo:exec-maven-plugin:3.1.0:java "-Dexec.mainClas
 4. 信号处理器保存结果并走到结束节点；结束后活动节点为空，`isEnded()` 为 `true`。
 
 这里的信号是直接 Java 方法调用，不是网络消息。示例只接受 `continue`，错误信号会抛异常并保持等待。
-所有状态和变量仅存于当前进程；进程退出后不能自动恢复，结束后的实例也不要重复发送信号。
+所有状态和变量仅存于当前进程；进程退出后不能自动恢复，结束后的实例收到信号会抛出 PvmException，拒绝再次执行节点。
 
 只验证此示例：
 
