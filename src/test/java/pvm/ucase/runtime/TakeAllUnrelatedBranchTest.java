@@ -81,6 +81,52 @@ public class TakeAllUnrelatedBranchTest extends TestCase {
         assertEquals(Collections.singletonList("process"), events);
     }
 
+    public void testTwoTokenJoinRecyclesWhileOtherJoinWaits() {
+        List<String> events = new ArrayList<String>();
+        ExecutionImpl root = (ExecutionImpl) new ProcessDefinitionBuilder("twoJoins")
+                .executionListener(PvmEvent.EVENTNAME_END, e -> events.add("process"))
+                .createActivity("start").initial().behavior(new WaitState()).transition("fork").endActivity()
+                .createActivity("fork").behavior(new ParallelGateway())
+                    .transition("a").transition("b").transition("c").endActivity()
+                .createActivity("a").behavior(new WaitState()).transition("join1").endActivity()
+                .createActivity("b").behavior(new WaitState()).transition("join1").endActivity()
+                .createActivity("c").behavior(new WaitState()).transition("join2").endActivity()
+                .createActivity("join1").behavior(new ParallelGateway()).transition("after1").endActivity()
+                .createActivity("after1").behavior(new WaitState()).transition("join2").endActivity()
+                .createActivity("join2").behavior(new ParallelGateway()).transition("after2").endActivity()
+                .createActivity("after2").behavior(new WaitState()).endActivity()
+                .buildProcessDefinition().createProcessInstance();
+        root.start();
+        root.signal(null, null);
+        ExecutionImpl a = root.findExecution("a");
+        ExecutionImpl b = root.findExecution("b");
+        ExecutionImpl c = root.findExecution("c");
+        c.signal(null, null);
+        a.signal(null, null);
+        assertFalse(c.isActive());
+        assertFalse(a.isActive());
+        b.signal(null, null);
+
+        assertFalse(root.isEnded());
+        assertTrue(events.isEmpty());
+        assertSame("the other join must retain its waiting token", c, root.findExecution("join2"));
+        assertFalse(c.isActive());
+        assertEquals("one recycled path and one waiting path remain", 2, root.getExecutions().size());
+        ExecutionImpl after = root.findExecution("after1");
+        assertTrue("one of the joined tokens must be reused", after == a || after == b);
+        assertFalse("the unused joined token must be pruned", root.getExecutions().contains(after == a ? b : a));
+        assertSame(root, after.getParent());
+        assertSame(root, c.getParent());
+        assertEquals(Collections.singletonList("after1"), root.findActiveActivityIds());
+
+        after.signal(null, null);
+        assertSame("the final join can collapse to its root", root, root.findExecution("after2"));
+        assertTrue(root.getExecutions().isEmpty());
+        root.signal(null, null);
+        assertCompleted(root);
+        assertEquals(Collections.singletonList("process"), events);
+    }
+
     public void testSinglePathStillCollapsesToRoot() {
         ExecutionImpl root = (ExecutionImpl) new ProcessDefinitionBuilder("single")
                 .createActivity("start").initial().behavior(new WaitState()).transition("gateway").endActivity()
