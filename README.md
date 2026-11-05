@@ -2,6 +2,10 @@
 
 工作流核心，这里只提供流程定义实现类；另外就是行为和执行器的上层接口，接口的实现由具体的工作流服务提供。
 
+#### 最佳实践与功能覆盖
+
+从 [嵌入式流程最佳实践](docs/best-practices.md) 开始：公开 API 的使用方式、可运行案例、功能覆盖矩阵和当前限制。
+
 #### 不依赖数据库的运行示例
 
 示例入口：`src/test/java/example/InMemoryWorkflowExample.java`，可在 IDE 中直接运行 `main`。
@@ -37,6 +41,10 @@ mvn test-compile org.codehaus.mojo:exec-maven-plugin:3.1.0:java "-Dexec.mainClas
 ```shell
 mvn "-Dtest=InMemoryWorkflowExampleTest" test
 ```
+
+#### 独立 JAR 发布检查
+
+在 JDK 11、Maven 环境中执行 `bash acceptance/run.sh`。检查会完整构建引擎，再单独构建消费者并运行流程测试与无测试依赖的 JAR 示例。虚构场景、自定义节点、参数和适用范围见 [验收说明](acceptance/README.md)。这是一项本地发布前检查，不会发布制品。
 
 #### 打包发布
 ```
