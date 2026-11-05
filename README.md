@@ -2,6 +2,10 @@
 
 工作流核心，这里只提供流程定义实现类；另外就是行为和执行器的上层接口，接口的实现由具体的工作流服务提供。
 
+#### 最佳实践与功能覆盖
+
+从 [嵌入式流程最佳实践](docs/best-practices.md) 开始：公开 API 的使用方式、可运行案例、功能覆盖矩阵和当前限制。
+
 #### 不依赖数据库的运行示例
 
 示例入口：`src/test/java/example/InMemoryWorkflowExample.java`，可在 IDE 中直接运行 `main`。

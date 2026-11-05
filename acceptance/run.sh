@@ -21,3 +21,5 @@ fi
 # Deliberately exclude test-classes and test-scoped dependencies from this process.
 "$JAVA_HOME/bin/java" -cp "$CONSUMER/target/text-batch-consumer-1.0-SNAPSHOT.jar:$(cat "$CONSUMER/target/runtime-classpath.txt")" \
     acceptance.TextBatchApplication
+"$JAVA_HOME/bin/java" -cp "$CONSUMER/target/text-batch-consumer-1.0-SNAPSHOT.jar:$(cat "$CONSUMER/target/runtime-classpath.txt")" \
+    acceptance.ApiUsageExamples
